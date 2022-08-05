@@ -12,6 +12,11 @@ node {
 
     stage('build') {
         sh "echo build"
+        sh "echo ${IMAGE_NAME}"
+        sh "mkdir -p .m2/repository"
+        sh "du -h -d1 .m2/repository"
+        // sh "cp settings.xml ~/.m2/settings.xml"
+        // sh "mvn $MAVEN_CLI_OPTS clean package -DskipTests -Dfrontend-dependency"
     }
         
     stage('dockerize') {
