@@ -3,7 +3,7 @@
 node {
 
     def  MAVEN_OPTS = "-Djava.awt.headless=true"
-    def MAVEN_CLI_OPTS = "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository --batch-mode"
+    // def MAVEN_CLI_OPTS = "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository --batch-mode"
     def IMAGE_NAME = "flowable-engage"
 
     stage('Source') {
