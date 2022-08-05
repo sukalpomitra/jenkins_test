@@ -1,0 +1,145 @@
+#!groovy
+switch(env.branchName) {
+    case "develop":
+        ocp_env = 'uat'
+        environment="develop"
+        img_tag="-dev"
+        break
+    case "main":
+    case "master":
+        ocp_env = 'prd'
+        environment="main or master"
+        img_tag="-rb"
+        break
+    default:
+        ocp_env = 'uat'
+        environment="default"
+        img_tag="-dev"
+        break
+}
+
+def build_ok = true
+def token = null;
+
+node {
+
+    String market = null
+    String tag1 =  null 
+    String tag2 =  null 
+    String deploy = null 
+    def getAppName = null
+
+    stage('Source') {
+        checkout scm 
+    }
+
+    stage('Validate') {
+        market = getTagMarket()
+        tag1 = getTagTag1()
+        tag1 = "${tag1}${img_tag}"
+        tag2 = getTagTag2()
+        tag2 = "${tag2}${img_tag}"
+        deploy = getTagDeploy()
+        getAppName = getApp() 
+        token = getToken(".token")
+
+        if (market.contains("null")){
+            market = getMessageMarket()
+            tag1 = getMessageTag1()
+            tag1 = "${tag1}${img_tag}"
+            tag2 = getMessageTag2()
+            tag2 = "${tag2}${img_tag}"
+            deploy = getMessageDeploy()
+
+            sh "echo  market=${market}"
+            sh "echo  tag1=${tag1}"
+            sh "echo  tag2=${tag2}" 
+            sh "echo  getAppName=${getAppName}" 
+            sh "echo  deploy=${deploy}" 
+            sh "echo token=${token}"
+        }
+    } 
+
+
+
+    stage('Test cases') {
+        if (deploy == "null" || deploy == "both" ){
+             tag2 = tag1
+        } else if (deploy == "dev"){
+            tag2 = "null"
+        } else if (deploy == "test"){
+            tag1 = tag1
+            tag2 = tag2
+        } else {
+            tag2 = deploy
+        }
+        sh "echo market=${market} and deploy=${deploy} and tag1=${tag1} and tag2=${tag2}" 
+    }
+
+ }
+
+def getTag(String value, String pos) {
+    String message  = sh(returnStdout: true, script: "git for-each-ref --sort=-taggerdate --format '%(subject)' refs/tags | sed -n ${pos}p").trim();
+    String[] message_str = message.toLowerCase().split(' ');
+    value = value.toLowerCase()
+    for( String values : message_str ){
+        if (values.contains(value)) {
+            return sh(returnStdout: true, script: "echo ${values} | cut -d'=' -f2").trim();
+        }
+    } 
+    return "null"
+}
+
+def getTagMarket() {
+    return getTag("market", "1")
+}
+
+def getTagDeploy() {
+    return getTag("deploy", "1")
+}
+
+
+def getTagTag1() {
+    return getTag("tag", "1")
+}
+
+def getTagTag2() {
+    return getTag("tag", "2")
+}
+
+def getMessage(String value, String pos){
+    String message  = sh(returnStdout: true, script: "git log --pretty=format:'%s' --abbrev-commit  | sed -n ${pos}p").trim();
+    String[] message_str = message.toLowerCase().split(' ');
+    value = value.toLowerCase()
+    for( String values : message_str ){
+        if (values.contains(value)) {
+            return sh(returnStdout: true, script: "echo ${values} | cut -d'=' -f2").trim();
+        }
+    } 
+    return "null"    
+}
+
+def getMessageTag1(){
+    return getMessage("tag","1" )
+}
+
+def getMessageTag2(){
+    return getMessage("tag","2" )
+}
+
+def getMessageMarket(){
+    return getMessage("market","1" )
+}
+
+def getMessageDeploy(){
+    return getMessage("deploy","1" )
+}
+
+def getApp() {
+    return sh(returnStdout: true, script: "basename -s .git `git config --get remote.origin.url`").trim();
+}
+
+def getToken(file){
+    return sh(returnStdout: true, script: "cat ${file} | base64 --decode").trim();
+}
+
